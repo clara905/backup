@@ -3,9 +3,14 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Image, Dimensions,
   Alert, ActivityIndicator
 } from 'react-native';
+<<<<<<< HEAD
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useStore } from '../store/useStore';
+=======
+import { doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../utils/firebase';
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
 const { width } = Dimensions.get('window');
 
@@ -30,7 +35,10 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
   const [loading, setLoading] = useState(false);
   const [liked, setLiked] = useState(post.isLiked);
   const [likesCount, setLikesCount] = useState(post.likesCount);
+<<<<<<< HEAD
   const { currentUser } = useStore();
+=======
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
   const handleLike = async () => {
     setLoading(true);
@@ -42,6 +50,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
       setLiked(!liked);
       setLikesCount(likesCount + (liked ? -1 : 1));
       onLike?.(post.id);
+<<<<<<< HEAD
       // create notification when liking someone else's post
       if (!liked) {
         try {
@@ -61,6 +70,8 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           console.log('Failed to create notification:', e);
         }
       }
+=======
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
     } catch (error) {
       Alert.alert('Error', 'Gagal update like');
     } finally {

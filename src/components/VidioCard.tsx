@@ -4,9 +4,14 @@ import {
   ActivityIndicator
 } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
+<<<<<<< HEAD
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useStore } from '../store/useStore';
+=======
+import { doc, updateDoc, increment } from 'firebase/firestore';
+import { db } from '../utils/firebase';
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
 const { width, height } = Dimensions.get('window');
 
@@ -31,7 +36,10 @@ export default function VidioCard({ video, onLike, onComment }: VidioCardProps) 
   const [liked, setLiked] = useState(video.isLiked);
   const [likesCount, setLikesCount] = useState(video.likesCount);
   const [loading, setLoading] = useState(false);
+<<<<<<< HEAD
   const { currentUser } = useStore();
+=======
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
   const player = useVideoPlayer(video.mediaURL || '', (p) => {
     p.loop = true;
@@ -47,6 +55,7 @@ export default function VidioCard({ video, onLike, onComment }: VidioCardProps) 
       setLiked(!liked);
       setLikesCount(likesCount + (liked ? -1 : 1));
       onLike?.(video.id);
+<<<<<<< HEAD
       // create notification for new like
       if (!liked) {
         try {
@@ -66,6 +75,8 @@ export default function VidioCard({ video, onLike, onComment }: VidioCardProps) 
           console.log('Error creating notification:', e);
         }
       }
+=======
+>>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
     } catch (error) {
       console.log('Error updating like:', error);
     } finally {
