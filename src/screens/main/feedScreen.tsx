@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   RefreshControl, ActivityIndicator, Image,
   Modal, TextInput, KeyboardAvoidingView, Platform, Alert
 } from 'react-native';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import {
   collection, query, orderBy, limit, getDocs,
   doc, updateDoc, increment, addDoc, serverTimestamp
@@ -12,6 +13,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 import AudioPlayer from '../../components/AudioPlayer';
+
+// ✅ VideoPreview sekarang menerima prop `isVisible` untuk pause/play otomatis
+const VideoPreview = ({ uri, isVisible }: { uri: string; isVisible: boolean }) => {
+  const player = useVideoPlayer(uri || null, (p) => {
+    p.loop = true;
+  });
+
+  // ✅ Pause video ketika tidak terlihat di layar, play ketika terlihat
+  useEffect(() => {
+    try {
+      if (isVisible) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    } catch (e) {}
+  }, [isVisible]);
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.videoBox}
+      contentFit="cover"
+      nativeControls={true}
+    />
+  );
+};
 
 export default function FeedScreen() {
   const { posts, setPosts, currentUser } = useStore();
@@ -22,6 +50,9 @@ export default function FeedScreen() {
   const [comments, setComments] = useState<any[]>([]);
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
+
+  // ✅ Track video mana yang sedang terlihat di layar
+  const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
 
   const fetchPosts = async () => {
     setLoading(true);
@@ -41,7 +72,7 @@ export default function FeedScreen() {
     }
   };
 
-  const handleLike = async (postId: string, isLiked: boolean) => {
+  const handleLike = useCallback(async (postId: string, isLiked: boolean) => {
     try {
       await updateDoc(doc(db, 'posts', postId), {
         likesCount: increment(isLiked ? -1 : 1)
@@ -50,7 +81,6 @@ export default function FeedScreen() {
         isLiked: !isLiked,
         likesCount: (posts.find(p => p.id === postId)?.likesCount || 0) + (isLiked ? -1 : 1)
       });
-      // Create notification for the post owner when it's a new like
       if (!isLiked) {
         try {
           const postOwner = posts.find(p => p.id === postId)?.userId;
@@ -72,9 +102,9 @@ export default function FeedScreen() {
     } catch (error) {
       console.log(error);
     }
-  };
+  }, [posts, currentUser]);
 
-  const openComments = async (postId: string) => {
+  const openComments = useCallback(async (postId: string) => {
     setSelectedPostId(postId);
     setCommentModal(true);
     try {
@@ -85,7 +115,7 @@ export default function FeedScreen() {
       const snap = await getDocs(q);
       setComments(snap.docs.map(d => ({ id: d.id, ...d.data() })));
     } catch (e) { console.log(e); }
-  };
+  }, []);
 
   const handleComment = async () => {
     if (!commentText.trim()) return;
@@ -119,7 +149,26 @@ export default function FeedScreen() {
 
   useEffect(() => { fetchPosts(); }, []);
 
-  const renderPost = ({ item }: any) => (
+  // ✅ Viewability config: video dianggap "terlihat" kalau 60% atau lebih ada di layar
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  // ✅ Callback ketika item yang terlihat berubah
+  const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
+    const visibleVideos = viewableItems.filter(
+      (item: any) => item.item.mediaType === 'video' && item.item.mediaURL
+    );
+    if (visibleVideos.length > 0) {
+      setVisibleVideoId(visibleVideos[0].item.id);
+    } else {
+      setVisibleVideoId(null);
+    }
+  }, []);
+
+  const renderPost = useCallback(({ item }: any) => (
     <View style={styles.postCard}>
       <View style={styles.postHeader}>
         <View style={styles.avatar}>
@@ -133,12 +182,13 @@ export default function FeedScreen() {
       {item.mediaType === 'image' && item.mediaURL ? (
         <Image source={{ uri: item.mediaURL }} style={styles.postImage} />
       ) : item.mediaType === 'audio' && item.mediaURL ? (
-        <AudioPlayer uri={item.mediaURL} caption={item.caption}/>
+        <AudioPlayer uri={item.mediaURL} caption={item.caption} />
       ) : item.mediaType === 'video' && item.mediaURL ? (
-        <View style={styles.videoBox}>
-          <Ionicons name="play-circle" size={48} color="#E91E63" />
-          <Text style={styles.videoText}>Video Post</Text>
-        </View>
+        // ✅ Kirim isVisible berdasarkan apakah ID ini yang sedang terlihat
+        <VideoPreview
+          uri={item.mediaURL}
+          isVisible={visibleVideoId === item.id}
+        />
       ) : (
         <View style={styles.noMediaBox}>
           <Text style={styles.noMediaText}>📝 Post</Text>
@@ -174,7 +224,7 @@ export default function FeedScreen() {
         </Text>
       ) : null}
     </View>
-  );
+  ), [visibleVideoId, handleLike, openComments]);
 
   if (loading && posts.length === 0) {
     return (
@@ -192,8 +242,15 @@ export default function FeedScreen() {
 
       <FlatList
         data={posts}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         renderItem={renderPost}
+        removeClippedSubviews={true}
+        windowSize={3}
+        maxToRenderPerBatch={5}
+        initialNumToRender={5}
+        // ✅ Pasang viewability handler di sini
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E91E63" />
         }
@@ -280,8 +337,7 @@ const styles = StyleSheet.create({
   avatarText: { color: '#fff', fontWeight: 'bold' },
   username: { color: '#fff', fontWeight: 'bold' },
   postImage: { width: '100%', height: 300, resizeMode: 'cover' },
-  videoBox: { width: '100%', height: 150, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center', gap: 8 },
-  videoText: { color: '#fff', fontSize: 14 },
+  videoBox: { width: '100%', height: 300, backgroundColor: '#111' },
   noMediaBox: { width: '100%', height: 80, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
   noMediaText: { color: '#888', fontSize: 18 },
   postActions: { flexDirection: 'row', padding: 12, gap: 20 },

@@ -11,16 +11,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import {
   collection, query, where, orderBy, limit, getDocs,
-  doc, updateDoc, increment, addDoc, serverTimestamp,
-  arrayUnion, arrayRemove
+  doc, updateDoc, increment, addDoc, serverTimestamp
 } from 'firebase/firestore';
 import * as MediaLibrary from 'expo-media-library';
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 
-// dynamic sizes will be calculated inside the component using hooks
-
-// Komponen per item video
+// ? Komponen per item video
 const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, videoWidth, bottomInset }: any) => {
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -30,34 +27,30 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, vid
     p.loop = true;
   });
 
-  // Play/pause saat jadi active atau tidak
+  // ? Play/pause saat jadi active atau tidak
   useEffect(() => {
-    let cancelled = false;
     try {
-      if (isActive && item.mediaURL) {
-        if (!isPaused) player.play();
+      if (isActive && item.mediaURL && !isPaused) {
+        player.play();
       } else {
         player.pause();
       }
     } catch (e) {}
 
     return () => {
-      cancelled = true;
       clearInterval(progressInterval.current);
       try { player.pause(); } catch (e) {}
     };
-  }, [isActive]);
+  }, [isActive, isPaused]);
 
-  // Update progress bar setiap 500ms
+  // ? Update progress bar setiap 500ms
   useEffect(() => {
     if (isActive && !isPaused) {
       progressInterval.current = setInterval(() => {
         try {
           const duration = player.duration;
           const current = player.currentTime;
-          if (duration > 0) {
-            setProgress(current / duration);
-          }
+          if (duration > 0) setProgress(current / duration);
         } catch (e) {}
       }, 500);
     } else {
@@ -76,35 +69,28 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, vid
     }
   };
 
-  // Ensure player is paused/unloaded on unmount to avoid cross-playback
+  // ? Cleanup saat unmount
   useEffect(() => {
     return () => {
       clearInterval(progressInterval.current);
-      try {
-        player.pause();
-        // attempt to unload if API available
-        if ((player as any).unloadAsync) {
-          try { (player as any).unloadAsync(); } catch (e) {}
-        }
-      } catch (e) {}
+      try { player.pause(); } catch (e) {}
     };
   }, []);
 
   return (
     <View style={[styles.videoContainer, { width: videoWidth, height: videoHeight }]}> 
       {item.mediaURL ? (
-          <TouchableOpacity
-            style={{ width: videoWidth, height: videoHeight }}
-            onPress={togglePause}
-            activeOpacity={1}
-          >
+        <TouchableOpacity
+          style={{ width: videoWidth, height: videoHeight }}
+          onPress={togglePause}
+          activeOpacity={1}
+        >
           <VideoView
             player={player}
             style={{ width: videoWidth, height: videoHeight }}
             contentFit="cover"
             nativeControls={false}
           />
-          {/* Pause indicator */}
           {isPaused && (
             <View style={styles.pauseOverlay}>
               <Ionicons name="play-circle" size={80} color="rgba(255,255,255,0.8)" />
@@ -113,18 +99,20 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, vid
         </TouchableOpacity>
       ) : (
         <View style={[styles.noVideo, { width: videoWidth, height: videoHeight }] }>
-          <Text style={styles.noVideoText}>🎬</Text>
+          <Text style={styles.noVideoText}>??</Text>
         </View>
       )}
+
+      {/* Progress bar */}
+      <View style={styles.progressBarContainer}>
+        <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
+      </View>
 
       {/* Overlay UI */}
       <View style={styles.overlay} pointerEvents="box-none">
         {/* Kanan: action buttons */}
         <View style={styles.rightActions}>
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => onLike(item.id, item.isLiked)}
-          >
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onLike(item.id, item.isLiked)}>
             <Ionicons
               name={item.isLiked ? 'heart' : 'heart-outline'}
               size={32}
@@ -133,18 +121,12 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, vid
             <Text style={styles.actionText}>{item.likesCount || 0}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => onComment(item.id)}
-          >
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onComment(item.id)}>
             <Ionicons name="chatbubble-outline" size={30} color="#fff" />
             <Text style={styles.actionText}>{item.commentsCount || 0}</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.actionBtn}
-            onPress={() => onSave(item.mediaURL, item.id)}
-          >
+          <TouchableOpacity style={styles.actionBtn} onPress={() => onSave(item.mediaURL, item.id)}>
             <Ionicons
               name={item.isSaved ? 'bookmark' : 'bookmark-outline'}
               size={30}
@@ -162,7 +144,7 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, vid
         {/* Bottom gradient overlay */}
         <View style={styles.gradientOverlay} />
 
-        {/* Bottom info section */}
+        {/* Bottom info */}
         <View style={[styles.bottomContainer, { bottom: (bottomInset || 0) + 40 }] }>
           <View style={styles.creatorSection}>
             <View style={styles.creatorAvatar}>
@@ -203,25 +185,20 @@ export default function VideoFeedScreen({ navigation }: any) {
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
-  // Dynamic sizing using window dims and safe area
   const { height, width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  // Video should be full window height; tab bar will overlay as floating
   const VIDEO_HEIGHT = height;
 
-  // Stop video saat pindah screen
+  // ? Stop video saat pindah screen
   useFocusEffect(
     useCallback(() => {
       setIsFocused(true);
-      return () => {
-        setIsFocused(false);
-      };
+      return () => setIsFocused(false);
     }, [])
   );
 
   const fetchVideos = async () => {
     try {
-      // Prefer an indexed query for videos
       const q = query(
         collection(db, 'posts'),
         where('mediaType', '==', 'video'),
@@ -231,19 +208,18 @@ export default function VideoFeedScreen({ navigation }: any) {
       const snap = await getDocs(q);
       let data = snap.docs.map(d => ({ id: d.id, ...d.data(), isLiked: false, isSaved: false }));
 
-      // If the strict query returned nothing, fallback to a broader fetch and client-side filter.
+      // Fallback jika query utama kosong
       if (!data || data.length === 0) {
         try {
           const q2 = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
           const snap2 = await getDocs(q2);
-          const all = snap2.docs.map(d => ({ id: d.id, ...d.data() }));
-          // Filter posts that likely contain videos even if mediaType is missing/mis-set
-          data = all
+          data = snap2.docs
+            .map(d => ({ id: d.id, ...d.data() }))
             .filter((p: any) => {
               if (!p) return false;
               if (p.mediaType === 'video') return true;
               const url = p.mediaURL || '';
-              return typeof url === 'string' && (url.endsWith('.mp4') || url.includes('video') || url.includes('mp4'));
+              return typeof url === 'string' && (url.endsWith('.mp4') || url.includes('video'));
             })
             .map((d: any) => ({ ...d, isLiked: false, isSaved: false }));
         } catch (e2) {
@@ -254,18 +230,6 @@ export default function VideoFeedScreen({ navigation }: any) {
       setVideos(data);
     } catch (e) {
       console.log('Primary video fetch failed', e);
-      // As a last resort, try an unconditional fetch
-      try {
-        const q3 = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(50));
-        const snap3 = await getDocs(q3);
-        const all = snap3.docs.map(d => ({ id: d.id, ...d.data() }));
-        const data = all
-          .filter((p: any) => p && ((p.mediaType === 'video') || (p.mediaURL && String(p.mediaURL).includes('.mp4'))))
-          .map((d: any) => ({ ...d, isLiked: false, isSaved: false }));
-        setVideos(data);
-      } catch (e3) {
-        console.log('Unconditional fetch failed', e3);
-      }
     } finally {
       setLoading(false);
     }
@@ -281,7 +245,6 @@ export default function VideoFeedScreen({ navigation }: any) {
           ? { ...v, isLiked: !isLiked, likesCount: (v.likesCount || 0) + (isLiked ? -1 : 1) }
           : v
       ));
-      // Create notification for the post owner when it's a new like
       if (!isLiked) {
         try {
           const postOwner = videos.find(v => v.id === postId)?.userId;
@@ -315,7 +278,7 @@ export default function VideoFeedScreen({ navigation }: any) {
       setVideos(prev => prev.map(v =>
         v.id === postId ? { ...v, isSaved: true } : v
       ));
-      Alert.alert('Berhasil! ✅', 'Video tersimpan ke galeri');
+      Alert.alert('Berhasil! ?', 'Video tersimpan ke galeri');
     } catch (e) {
       Alert.alert('Gagal', 'Tidak bisa menyimpan video');
     }
@@ -360,7 +323,7 @@ export default function VideoFeedScreen({ navigation }: any) {
 
   useEffect(() => { fetchVideos(); }, []);
 
-  // Stable ref callback for viewability changes to avoid re-creating function
+  // ? onViewableItemsChanged pakai useRef agar referensi tidak pernah berubah
   const onViewRef = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems && viewableItems.length > 0) {
       const first = viewableItems.find(v => v.isViewable) || viewableItems[0];
@@ -368,6 +331,23 @@ export default function VideoFeedScreen({ navigation }: any) {
     }
   });
 
+  // ? viewabilityConfig juga pakai useRef agar stabil
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 80,
+    minimumViewTime: 100,
+    waitForInteraction: false,
+  }).current;
+
+  // ? getItemLayout stabil karena VIDEO_HEIGHT tidak berubah saat scroll
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: VIDEO_HEIGHT,
+    offset: VIDEO_HEIGHT * index,
+    index,
+  }), [VIDEO_HEIGHT]);
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  // ? Hanya satu loading check
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
@@ -379,7 +359,7 @@ export default function VideoFeedScreen({ navigation }: any) {
   if (videos.length === 0) {
     return (
       <View style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>🎬</Text>
+        <Text style={styles.emptyIcon}>??</Text>
         <Text style={styles.emptyLabel}>Belum ada video</Text>
         <Text style={styles.emptySubLabel}>Upload video pertama kamu!</Text>
         <TouchableOpacity
@@ -392,21 +372,13 @@ export default function VideoFeedScreen({ navigation }: any) {
     );
   }
 
-  if (loading && videos.length === 0) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#E91E63" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
       <StatusBar hidden />
       <FlatList
         style={{ flex: 1 }}
         data={videos}
-        keyExtractor={(item) => item.id}
+        keyExtractor={keyExtractor}
         renderItem={({ item, index }) => (
           <VideoItem
             item={item}
@@ -419,21 +391,17 @@ export default function VideoFeedScreen({ navigation }: any) {
             bottomInset={insets.bottom}
           />
         )}
-        pagingEnabled
+        showsVerticalScrollIndicator={false}
+        pagingEnabled={true}
+        decelerationRate="fast"
         snapToInterval={VIDEO_HEIGHT}
         snapToAlignment="start"
-        decelerationRate="fast"
-        showsVerticalScrollIndicator={false}
         onViewableItemsChanged={onViewRef.current}
-        viewabilityConfig={{ itemVisiblePercentThreshold: 90, minimumViewTime: 300, waitForInteraction: true }}
+        viewabilityConfig={viewabilityConfig}
         initialNumToRender={3}
-        windowSize={3}
-        removeClippedSubviews={false}
-        getItemLayout={(_, index) => ({
-          length: VIDEO_HEIGHT,
-          offset: VIDEO_HEIGHT * index,
-          index,
-        })}
+        windowSize={5}
+        removeClippedSubviews={true}
+        getItemLayout={getItemLayout}
       />
 
       {/* Comment Modal */}
@@ -511,8 +479,6 @@ const styles = StyleSheet.create({
   uploadBtn: { backgroundColor: '#E91E63', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 24 },
   uploadBtnText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   videoContainer: { flex: 1, backgroundColor: '#000' },
-  videoWrapper: { flex: 1 },
-  video: { flex: 1 },
   pauseOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'center', alignItems: 'center' },
   noVideo: { justifyContent: 'center', alignItems: 'center', backgroundColor: '#111' },
   noVideoText: { fontSize: 80 },
@@ -577,7 +543,6 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     maxWidth: 180,
   },
-  bottomInfo: { },
   videoUsername: { color: '#fff', fontWeight: 'bold', fontSize: 15, marginBottom: 4, textShadowColor: '#000', textShadowRadius: 4 },
   videoCaption: { color: '#eee', fontSize: 13, textShadowColor: '#000', textShadowRadius: 4, lineHeight: 18 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end' },

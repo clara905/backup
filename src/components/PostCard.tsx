@@ -3,19 +3,15 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Image, Dimensions,
   Alert, ActivityIndicator
 } from 'react-native';
-<<<<<<< HEAD
 import { doc, updateDoc, increment, addDoc, collection, serverTimestamp } from 'firebase/firestore';
 import { db } from '../utils/firebase';
 import { useStore } from '../store/useStore';
-=======
-import { doc, updateDoc, increment } from 'firebase/firestore';
-import { db } from '../utils/firebase';
->>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
 const { width } = Dimensions.get('window');
 
 interface Post {
   id: string;
+  userId: string;
   userDisplayName: string;
   userPhotoURL: string;
   mediaURL: string;
@@ -31,30 +27,22 @@ interface PostCardProps {
   onComment?: (postId: string) => void;
 }
 
-export default function PostCard({ post, onLike, onComment }: PostCardProps) {
+const PostCard = React.memo(function PostCard({ post, onLike, onComment }: PostCardProps) {
   const [loading, setLoading] = useState(false);
-  const [liked, setLiked] = useState(post.isLiked);
-  const [likesCount, setLikesCount] = useState(post.likesCount);
-<<<<<<< HEAD
   const { currentUser } = useStore();
-=======
->>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
 
   const handleLike = async () => {
     setLoading(true);
     try {
       const postRef = doc(db, 'posts', post.id);
       await updateDoc(postRef, {
-        likesCount: increment(liked ? -1 : 1),
+        likesCount: increment(post.isLiked ? -1 : 1),
       });
-      setLiked(!liked);
-      setLikesCount(likesCount + (liked ? -1 : 1));
       onLike?.(post.id);
-<<<<<<< HEAD
       // create notification when liking someone else's post
-      if (!liked) {
+      if (!post.isLiked) {
         try {
-          const ownerId = (post as any).userId;
+          const ownerId = post.userId;
           if (ownerId && ownerId !== currentUser?.uid) {
             await addDoc(collection(db, 'notifications'), {
               toUserId: ownerId,
@@ -70,8 +58,6 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           console.log('Failed to create notification:', e);
         }
       }
-=======
->>>>>>> 8a3abac1009ea2faae70e6e13b0dc5e4d87e757b
     } catch (error) {
       Alert.alert('Error', 'Gagal update like');
     } finally {
@@ -104,6 +90,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           source={{ uri: post.mediaURL }}
           style={styles.image}
           resizeMode="cover"
+          fadeDuration={0}
         />
       )}
 
@@ -117,7 +104,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
           {loading ? (
             <ActivityIndicator size="small" color="#E91E63" />
           ) : (
-            <Text style={styles.actionIcon}>{liked ? '❤️' : '🤍'}</Text>
+            <Text style={styles.actionIcon}>{post.isLiked ? '❤️' : '🤍'}</Text>
           )}
         </TouchableOpacity>
         <TouchableOpacity
@@ -133,7 +120,7 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
 
       {/* Stats */}
       <View style={styles.stats}>
-        <Text style={styles.statText}>{likesCount} likes</Text>
+        <Text style={styles.statText}>{post.likesCount || 0} likes</Text>
         <Text style={styles.statText}>{post.commentsCount} comments</Text>
       </View>
 
@@ -144,7 +131,9 @@ export default function PostCard({ post, onLike, onComment }: PostCardProps) {
       </View>
     </View>
   );
-}
+});
+
+export default PostCard;
 
 const styles = StyleSheet.create({
   card: {
