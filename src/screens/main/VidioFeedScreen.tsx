@@ -3,7 +3,11 @@ import {
   View, Text, FlatList, StyleSheet,
   TouchableOpacity, ViewToken, ActivityIndicator,
   Modal, TextInput, KeyboardAvoidingView, Platform,
+<<<<<<< HEAD
   Alert, StatusBar, useWindowDimensions, Share
+=======
+  Alert, StatusBar, useWindowDimensions
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -16,10 +20,16 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
+<<<<<<< HEAD
 import { arrayUnion, arrayRemove } from 'firebase/firestore'; // Pastikan import ini ada
 
 // ? Komponen per item video
 const VideoItem = ({ item, isActive, onLike, onComment, onSave, onShare, videoHeight, videoWidth, bottomInset }: any) => {
+=======
+
+// ? Komponen per item video
+const VideoItem = ({ item, isActive, onLike, onComment, onSave, videoHeight, videoWidth, bottomInset }: any) => {
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const [isPaused, setIsPaused] = useState(false);
   const [progress, setProgress] = useState(0);
   const progressInterval = useRef<any>(null);
@@ -136,7 +146,11 @@ const VideoItem = ({ item, isActive, onLike, onComment, onSave, onShare, videoHe
             <Text style={styles.actionText}>Simpan</Text>
           </TouchableOpacity>
 
+<<<<<<< HEAD
           <TouchableOpacity style={styles.actionBtn} onPress={() => onShare(item)}>
+=======
+          <TouchableOpacity style={styles.actionBtn}>
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
             <Ionicons name="arrow-redo-outline" size={30} color="#fff" />
             <Text style={styles.actionText}>Share</Text>
           </TouchableOpacity>
@@ -207,6 +221,7 @@ export default function VideoFeedScreen({ navigation }: any) {
         limit(20)
       );
       const snap = await getDocs(q);
+<<<<<<< HEAD
       let data = snap.docs.map(d => {
       const postData = d.data();
       return { 
@@ -216,6 +231,9 @@ export default function VideoFeedScreen({ navigation }: any) {
         isSaved: false 
       };
     });
+=======
+      let data = snap.docs.map(d => ({ id: d.id, ...d.data(), isLiked: false, isSaved: false }));
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
       // Fallback jika query utama kosong
       if (!data || data.length === 0) {
@@ -231,12 +249,19 @@ export default function VideoFeedScreen({ navigation }: any) {
               return typeof url === 'string' && (url.endsWith('.mp4') || url.includes('video'));
             })
             .map((d: any) => ({ ...d, isLiked: false, isSaved: false }));
+<<<<<<< HEAD
         } catch (e) {
     console.log('Primary video fetch failed', e);
   } finally {
     setLoading(false);
   }
 };
+=======
+        } catch (e2) {
+          console.log('Fallback fetch failed', e2);
+        }
+      }
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
       setVideos(data);
     } catch (e) {
@@ -249,6 +274,7 @@ export default function VideoFeedScreen({ navigation }: any) {
   const handleLike = async (postId: string, isLiked: boolean) => {
     try {
       await updateDoc(doc(db, 'posts', postId), {
+<<<<<<< HEAD
       likesCount: increment(isLiked ? -1 : 1),
       likedBy: isLiked ? arrayRemove(currentUser?.uid) : arrayUnion(currentUser?.uid)
       });
@@ -260,6 +286,14 @@ export default function VideoFeedScreen({ navigation }: any) {
             likesCount: (v.likesCount || 0) + (isLiked ? -1 : 1) 
           }
         : v
+=======
+        likesCount: increment(isLiked ? -1 : 1)
+      });
+      setVideos(prev => prev.map(v =>
+        v.id === postId
+          ? { ...v, isLiked: !isLiked, likesCount: (v.likesCount || 0) + (isLiked ? -1 : 1) }
+          : v
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
       ));
       if (!isLiked) {
         try {
@@ -299,6 +333,7 @@ export default function VideoFeedScreen({ navigation }: any) {
       Alert.alert('Gagal', 'Tidak bisa menyimpan video');
     }
   };
+<<<<<<< HEAD
   const handleShare = async (post: any) => {
     try {
       const shareMessage = `Lihat video dari @${post.userDisplayName}\n\n${post.caption}\n\n🎥 Link: ${post.mediaURL}\n\nTonton di MediaNova!`;
@@ -310,6 +345,9 @@ export default function VideoFeedScreen({ navigation }: any) {
       console.log('Error sharing:', error.message);
     }
   };
+=======
+
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const openComments = async (postId: string) => {
     setSelectedPostId(postId);
     setCommentModal(true);
@@ -412,7 +450,10 @@ export default function VideoFeedScreen({ navigation }: any) {
             onLike={handleLike}
             onComment={openComments}
             onSave={handleSave}
+<<<<<<< HEAD
             onShare={handleShare}
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
             videoHeight={VIDEO_HEIGHT}
             videoWidth={width}
             bottomInset={insets.bottom}

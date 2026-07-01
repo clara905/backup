@@ -11,6 +11,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 
+<<<<<<< HEAD
 // This screen shows either:
 //  - the logged-in user's own account + settings/logout (no `userId` param, or
 //    `userId` === currentUser.uid), OR
@@ -21,6 +22,8 @@ import { useStore } from '../../store/useStore';
 // `userId` — avatar/username taps on Home are intentionally inert. This
 // screen only ever opens another account when reached from Search,
 // Notifications, or Comments.
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 export default function ProfileScreen({ route }: any) {
   const { currentUser, isDarkMode, toggleDarkMode } = useStore();
   const [loading, setLoading] = useState(false);
@@ -33,7 +36,11 @@ export default function ProfileScreen({ route }: any) {
 
   useEffect(() => {
     fetchProfile();
+<<<<<<< HEAD
   }, [targetUserId, currentUser?.uid]);
+=======
+  }, [targetUserId]);
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
   const fetchProfile = async () => {
     if (!targetUserId) return;
@@ -45,8 +52,11 @@ export default function ProfileScreen({ route }: any) {
         if (!isOwnProfile && currentUser?.uid) {
           setIsFollowing(data.followers?.includes(currentUser.uid) || false);
         }
+<<<<<<< HEAD
       } else {
         setProfileData(null);
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
       }
     } catch (e) {
       console.log(e);
@@ -54,8 +64,12 @@ export default function ProfileScreen({ route }: any) {
   };
 
   const handleFollow = async () => {
+<<<<<<< HEAD
     // Follow only works between two different, logged-in users.
     if (!currentUser?.uid || !targetUserId || currentUser.uid === targetUserId) return;
+=======
+    if (!currentUser?.uid || !targetUserId) return;
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
     setLoading(true);
     try {
       if (isFollowing) {
@@ -70,8 +84,12 @@ export default function ProfileScreen({ route }: any) {
         setIsFollowing(false);
         setProfileData((prev: any) => ({
           ...prev,
+<<<<<<< HEAD
           followers: (prev?.followers || []).filter((id: string) => id !== currentUser.uid),
           followersCount: Math.max(0, (prev?.followersCount || 0) - 1)
+=======
+          followersCount: (prev.followersCount || 1) - 1
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
         }));
       } else {
         await updateDoc(doc(db, 'users', targetUserId), {
@@ -85,8 +103,12 @@ export default function ProfileScreen({ route }: any) {
         setIsFollowing(true);
         setProfileData((prev: any) => ({
           ...prev,
+<<<<<<< HEAD
           followers: [...(prev?.followers || []), currentUser.uid],
           followersCount: (prev?.followersCount || 0) + 1
+=======
+          followersCount: (prev.followersCount || 0) + 1
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
         }));
       }
     } catch (e) {
@@ -95,7 +117,11 @@ export default function ProfileScreen({ route }: any) {
       setLoading(false);
     }
   };
+<<<<<<< HEAD
   
+=======
+
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const handleLogout = async () => {
     Alert.alert('Logout', 'Yakin mau logout?', [
       { text: 'Batal', style: 'cancel' },
@@ -113,6 +139,7 @@ export default function ProfileScreen({ route }: any) {
   const textColor = isDarkMode ? '#fff' : '#000';
   const subTextColor = isDarkMode ? '#888' : '#666';
 
+<<<<<<< HEAD
   if (!profileData && targetUserId) {
     return (
       <View style={[styles.container, { backgroundColor: bgColor, justifyContent: 'center', alignItems: 'center' }]}>
@@ -121,6 +148,8 @@ export default function ProfileScreen({ route }: any) {
     );
   }
 
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   return (
     <ScrollView style={[styles.container, { backgroundColor: bgColor }]}>
       <View style={[styles.header, { backgroundColor: cardColor }]}>
@@ -192,7 +221,14 @@ export default function ProfileScreen({ route }: any) {
             </View>
           </View>
 
+<<<<<<< HEAD
           <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+=======
+          <TouchableOpacity
+            style={styles.logoutBtn}
+            onPress={handleLogout}
+          >
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
             <Ionicons name="log-out-outline" size={20} color="#ff3333" />
             <Text style={styles.logoutText}>Logout</Text>
           </TouchableOpacity>
@@ -225,4 +261,8 @@ const styles = StyleSheet.create({
   settingLabel: { fontSize: 16 },
   logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, margin: 16, backgroundColor: '#1a0000', borderWidth: 1, borderColor: '#ff3333', borderRadius: 12, padding: 16 },
   logoutText: { color: '#ff3333', fontSize: 16, fontWeight: 'bold' },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06

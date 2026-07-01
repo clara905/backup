@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
+<<<<<<< HEAD
   FlatList, TouchableOpacity, ActivityIndicator, Image
 } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
@@ -8,11 +9,21 @@ import { useNavigation } from '@react-navigation/native';
 import { db } from '../../utils/firebase';
 
 
+=======
+  FlatList, TouchableOpacity, ActivityIndicator
+} from 'react-native';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../utils/firebase';
+
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 export default function SearchScreen() {
   const [searchText, setSearchText] = useState('');
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+<<<<<<< HEAD
   const navigation = useNavigation<any>();
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
   const handleSearch = async (text: string) => {
     setSearchText(text);
@@ -52,6 +63,7 @@ export default function SearchScreen() {
         data={results}
         keyExtractor={(item) => item.id}
         renderItem={({ item }) => (
+<<<<<<< HEAD
           // Item 1: tapping a search result opens that user's profile
           <TouchableOpacity
             style={styles.userItem}
@@ -76,6 +88,17 @@ export default function SearchScreen() {
               {item.username ? (
                 <Text style={styles.username}>@{item.username}</Text>
               ) : null}
+=======
+          <TouchableOpacity style={styles.userItem}>
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>
+                {item.displayName?.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.displayName}>{item.displayName}</Text>
+              <Text style={styles.email}>{item.email}</Text>
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
             </View>
           </TouchableOpacity>
         )}
@@ -104,6 +127,7 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   userItem: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: '#222' },
+<<<<<<< HEAD
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E91E63', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
   avatarImg: { width: '100%', height: '100%' },
   avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
@@ -111,3 +135,11 @@ const styles = StyleSheet.create({
   username: { color: '#888', fontSize: 13 },
   emptyText: { color: '#888', textAlign: 'center', marginTop: 40 },
 });
+=======
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E91E63', justifyContent: 'center', alignItems: 'center' },
+  avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
+  displayName: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
+  email: { color: '#888', fontSize: 13 },
+  emptyText: { color: '#888', textAlign: 'center', marginTop: 40 },
+});
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06

@@ -3,9 +3,14 @@ import {
   View, Text, FlatList, StyleSheet,
   TouchableOpacity, ActivityIndicator
 } from 'react-native';
+<<<<<<< HEAD
 import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+=======
+import { collection, query, where, orderBy, limit, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { Ionicons } from '@expo/vector-icons';
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 
@@ -13,7 +18,10 @@ export default function NotificationScreen() {
   const { currentUser } = useStore();
   const [notifications, setNotifications] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+<<<<<<< HEAD
   const navigation = useNavigation<any>();
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
   useEffect(() => {
     if (!currentUser?.uid) return;
@@ -43,6 +51,7 @@ export default function NotificationScreen() {
     }
   };
 
+<<<<<<< HEAD
   // Item 1: tap a notification to see the profile of whoever triggered it
   const goToProfile = (fromUserId: string) => {
     if (!fromUserId) return;
@@ -56,6 +65,12 @@ export default function NotificationScreen() {
         style={[styles.item, !item.isRead && styles.unreadItem]}
         onPress={() => goToProfile(item.fromUserId)}
       >
+=======
+  const renderItem = ({ item }: any) => {
+    const icon = getIcon(item.type);
+    return (
+      <View style={[styles.item, !item.isRead && styles.unreadItem]}>
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
         <View style={[styles.iconBox, { backgroundColor: icon.color + '22' }]}>
           <Ionicons name={icon.name as any} size={20} color={icon.color} />
         </View>
@@ -66,7 +81,11 @@ export default function NotificationScreen() {
           </Text>
         </View>
         {!item.isRead && <View style={styles.unreadDot} />}
+<<<<<<< HEAD
       </TouchableOpacity>
+=======
+      </View>
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
     );
   };
 
@@ -112,4 +131,8 @@ const styles = StyleSheet.create({
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#E91E63' },
   emptyContainer: { flex: 1, alignItems: 'center', paddingTop: 80, gap: 16 },
   emptyText: { color: '#888', fontSize: 16 },
+<<<<<<< HEAD
 });
+=======
+});
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06

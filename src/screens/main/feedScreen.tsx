@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
   RefreshControl, ActivityIndicator, Image,
+<<<<<<< HEAD
   Modal, TextInput, KeyboardAvoidingView, Platform, Alert, Dimensions
 } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
@@ -10,11 +11,20 @@ import {
   collection, query, orderBy, limit, getDocs, where,
   doc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot,
    arrayUnion, arrayRemove 
+=======
+  Modal, TextInput, KeyboardAvoidingView, Platform, Alert
+} from 'react-native';
+import { VideoView, useVideoPlayer } from 'expo-video';
+import {
+  collection, query, orderBy, limit, getDocs,
+  doc, updateDoc, increment, addDoc, serverTimestamp
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 import AudioPlayer from '../../components/AudioPlayer';
+<<<<<<< HEAD
 import TextOverlay from '../../components/TextOverlay';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -81,13 +91,44 @@ const VideoPreview = ({ uri, isScreenFocused }: { uri: string; isScreenFocused: 
         <Ionicons name={muted ? 'volume-mute' : 'volume-high'} size={16} color="#fff" />
       </View>
     </TouchableOpacity>
+=======
+
+// ✅ VideoPreview sekarang menerima prop `isVisible` untuk pause/play otomatis
+const VideoPreview = ({ uri, isVisible }: { uri: string; isVisible: boolean }) => {
+  const player = useVideoPlayer(uri || null, (p) => {
+    p.loop = true;
+  });
+
+  // ✅ Pause video ketika tidak terlihat di layar, play ketika terlihat
+  useEffect(() => {
+    try {
+      if (isVisible) {
+        player.play();
+      } else {
+        player.pause();
+      }
+    } catch (e) {}
+  }, [isVisible]);
+
+  return (
+    <VideoView
+      player={player}
+      style={styles.videoBox}
+      contentFit="cover"
+      nativeControls={true}
+    />
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   );
 };
 
 export default function FeedScreen() {
+<<<<<<< HEAD
   const { posts, setPosts, currentUser, isDarkMode } = useStore();
   const navigation = useNavigation<any>();
   const isScreenFocused = useIsFocused(); // item 5: know when Home is off-screen
+=======
+  const { posts, setPosts, currentUser } = useStore();
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [commentModal, setCommentModal] = useState(false);
@@ -96,6 +137,7 @@ export default function FeedScreen() {
   const [commentText, setCommentText] = useState('');
   const [commentLoading, setCommentLoading] = useState(false);
 
+<<<<<<< HEAD
   // Item 7: Following vs For You tabs
   const [feedTab, setFeedTab] = useState<'following' | 'forYou'>('forYou');
 
@@ -158,6 +200,22 @@ export default function FeedScreen() {
     try {
       const fetched = feedTab === 'forYou' ? await fetchForYouPosts() : await fetchFollowingPosts(followingIds);
       setPosts(fetched);
+=======
+  // ✅ Track video mana yang sedang terlihat di layar
+  const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
+
+  const fetchPosts = async () => {
+    setLoading(true);
+    try {
+      const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(20));
+      const snapshot = await getDocs(q);
+      const fetchedPosts = snapshot.docs.map(d => ({
+        id: d.id,
+        ...d.data(),
+        isLiked: false,
+      })) as any[];
+      setPosts(fetchedPosts);
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
     } catch (error) {
       console.log(error);
     } finally {
@@ -168,12 +226,17 @@ export default function FeedScreen() {
   const handleLike = useCallback(async (postId: string, isLiked: boolean) => {
     try {
       await updateDoc(doc(db, 'posts', postId), {
+<<<<<<< HEAD
         likesCount: increment(isLiked ? -1 : 1),
         // Simpan atau hapus UID user dari array likedBy di Firestore
         likedBy: isLiked ? arrayRemove(currentUser?.uid) : arrayUnion(currentUser?.uid)
       });
       
       // Update state lokal (Zustand)
+=======
+        likesCount: increment(isLiked ? -1 : 1)
+      });
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
       useStore.getState().updatePost(postId, {
         isLiked: !isLiked,
         likesCount: (posts.find(p => p.id === postId)?.likesCount || 0) + (isLiked ? -1 : 1)
@@ -214,12 +277,15 @@ export default function FeedScreen() {
     } catch (e) { console.log(e); }
   }, []);
 
+<<<<<<< HEAD
   // NOTE: avatar/username taps on Home are intentionally NOT navigable.
   // Home must never open another user's Profile — the Profile screen only
   // opens another account when reached from Search, Notifications, or
   // Comments. See postHeader, videoIdentityBar, and the comment modal's
   // renderItem below: they use plain <View>s, not TouchableOpacity.
 
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const handleComment = async () => {
     if (!commentText.trim()) return;
     setCommentLoading(true);
@@ -250,6 +316,7 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
+<<<<<<< HEAD
   // Refetch whenever the active tab changes OR the auth session resolves/changes.
   //
   // FIX: this effect used to depend only on [feedTab]. On cold start, Firebase
@@ -281,10 +348,23 @@ export default function FeedScreen() {
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const keyExtractor = useCallback((item: any) => item.id, []);
 
+=======
+  useEffect(() => { fetchPosts(); }, []);
+
+  // ✅ Viewability config: video dianggap "terlihat" kalau 60% atau lebih ada di layar
+  const viewabilityConfig = useRef({
+    itemVisiblePercentThreshold: 60,
+  }).current;
+
+  const keyExtractor = useCallback((item: any) => item.id, []);
+
+  // ✅ Callback ketika item yang terlihat berubah
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   const onViewableItemsChanged = useCallback(({ viewableItems }: any) => {
     const visibleVideos = viewableItems.filter(
       (item: any) => item.item.mediaType === 'video' && item.item.mediaURL
     );
+<<<<<<< HEAD
     setVisibleVideoId(visibleVideos.length > 0 ? visibleVideos[0].item.id : null);
   }, []);
 
@@ -374,11 +454,86 @@ export default function FeedScreen() {
       </View>
     );
   }, [visibleVideoId, isScreenFocused, handleLike, openComments]);
+=======
+    if (visibleVideos.length > 0) {
+      setVisibleVideoId(visibleVideos[0].item.id);
+    } else {
+      setVisibleVideoId(null);
+    }
+  }, []);
+
+  const renderPost = useCallback(({ item }: any) => (
+    <View style={styles.postCard}>
+      <View style={styles.postHeader}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>
+            {item.userDisplayName?.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <Text style={styles.username}>{item.userDisplayName}</Text>
+      </View>
+
+      {item.mediaType === 'image' && item.mediaURL ? (
+        <Image source={{ uri: item.mediaURL }} style={styles.postImage} />
+      ) : item.mediaType === 'audio' && item.mediaURL ? (
+        <AudioPlayer uri={item.mediaURL} caption={item.caption} />
+      ) : item.mediaType === 'video' && item.mediaURL ? (
+        // ✅ Kirim isVisible berdasarkan apakah ID ini yang sedang terlihat
+        <VideoPreview
+          uri={item.mediaURL}
+          isVisible={visibleVideoId === item.id}
+        />
+      ) : (
+        <View style={styles.noMediaBox}>
+          <Text style={styles.noMediaText}>📝 Post</Text>
+        </View>
+      )}
+
+      <View style={styles.postActions}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => handleLike(item.id, item.isLiked)}
+        >
+          <Ionicons
+            name={item.isLiked ? 'heart' : 'heart-outline'}
+            size={24}
+            color={item.isLiked ? '#E91E63' : '#fff'}
+          />
+          <Text style={styles.actionCount}>{item.likesCount || 0}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => openComments(item.id)}
+        >
+          <Ionicons name="chatbubble-outline" size={22} color="#fff" />
+          <Text style={styles.actionCount}>{item.commentsCount || 0}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {item.caption && item.mediaType !== 'audio' ? (
+        <Text style={styles.caption}>
+          <Text style={styles.captionName}>{item.userDisplayName} </Text>
+          {item.caption}
+        </Text>
+      ) : null}
+    </View>
+  ), [visibleVideoId, handleLike, openComments]);
+
+  if (loading && posts.length === 0) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E91E63" />
+      </View>
+    );
+  }
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎬 MediaNova</Text>
+<<<<<<< HEAD
         
         {/* Tambahkan tombol notifikasi di sini bang */}
         <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
@@ -438,6 +593,30 @@ export default function FeedScreen() {
           }
         />
       )}
+=======
+      </View>
+
+      <FlatList
+        data={posts}
+        keyExtractor={keyExtractor}
+        renderItem={renderPost}
+        removeClippedSubviews={true}
+        windowSize={3}
+        maxToRenderPerBatch={5}
+        initialNumToRender={5}
+        // ✅ Pasang viewability handler di sini
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#E91E63" />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>Belum ada post. Jadilah yang pertama! 🎬</Text>
+          </View>
+        }
+      />
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
 
       <Modal
         visible={commentModal}
@@ -461,8 +640,11 @@ export default function FeedScreen() {
               keyExtractor={(item) => item.id}
               style={styles.commentList}
               renderItem={({ item }) => (
+<<<<<<< HEAD
                 // Not tappable — Home (including this modal) never navigates
                 // to another user's Profile.
+=======
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
                 <View style={styles.commentItem}>
                   <View style={styles.commentAvatar}>
                     <Text style={styles.commentAvatarText}>
@@ -475,7 +657,13 @@ export default function FeedScreen() {
                   </View>
                 </View>
               )}
+<<<<<<< HEAD
               ListEmptyComponent={<Text style={styles.noComments}>Belum ada komentar</Text>}
+=======
+              ListEmptyComponent={
+                <Text style={styles.noComments}>Belum ada komentar</Text>
+              }
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
             />
             <View style={styles.commentInputBox}>
               <TextInput
@@ -486,7 +674,15 @@ export default function FeedScreen() {
                 onChangeText={setCommentText}
                 multiline
               />
+<<<<<<< HEAD
               <TouchableOpacity style={styles.sendBtn} onPress={handleComment} disabled={commentLoading}>
+=======
+              <TouchableOpacity
+                style={styles.sendBtn}
+                onPress={handleComment}
+                disabled={commentLoading}
+              >
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
                 {commentLoading
                   ? <ActivityIndicator color="#fff" size="small" />
                   : <Ionicons name="send" size={20} color="#fff" />
@@ -502,6 +698,7 @@ export default function FeedScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
+<<<<<<< HEAD
   header: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -534,6 +731,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 10,
   },
   videoUsername: { color: '#fff', fontWeight: 'bold', fontSize: 14, flex: 1 },
+=======
+  loadingContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  header: { padding: 16, borderBottomWidth: 1, borderBottomColor: '#222' },
+  headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
+  postCard: { marginBottom: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
+  postHeader: { flexDirection: 'row', alignItems: 'center', padding: 12 },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#E91E63', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  avatarText: { color: '#fff', fontWeight: 'bold' },
+  username: { color: '#fff', fontWeight: 'bold' },
+  postImage: { width: '100%', height: 300, resizeMode: 'cover' },
+  videoBox: { width: '100%', height: 300, backgroundColor: '#111' },
+>>>>>>> 24e033e790ca381bbf6dc1d4a598f48701fb4c06
   noMediaBox: { width: '100%', height: 80, backgroundColor: '#111', justifyContent: 'center', alignItems: 'center' },
   noMediaText: { color: '#888', fontSize: 18 },
   postActions: { flexDirection: 'row', padding: 12, gap: 20 },
