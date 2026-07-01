@@ -46,7 +46,7 @@ export default function NotificationScreen() {
   // Item 1: tap a notification to see the profile of whoever triggered it
   const goToProfile = (fromUserId: string) => {
     if (!fromUserId) return;
-    navigation.navigate('Profile', { userId: fromUserId });
+    navigation.navigate('UserProfile', { userId: fromUserId });
   };
 
   const renderItem = ({ item }: any) => {

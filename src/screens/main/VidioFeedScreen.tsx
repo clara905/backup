@@ -16,6 +16,7 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import { db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
+import { arrayUnion, arrayRemove } from 'firebase/firestore'; // Pastikan import ini ada
 
 // ? Komponen per item video
 const VideoItem = ({ item, isActive, onLike, onComment, onSave, onShare, videoHeight, videoWidth, bottomInset }: any) => {
@@ -206,7 +207,15 @@ export default function VideoFeedScreen({ navigation }: any) {
         limit(20)
       );
       const snap = await getDocs(q);
-      let data = snap.docs.map(d => ({ id: d.id, ...d.data(), isLiked: false, isSaved: false }));
+      let data = snap.docs.map(d => {
+      const postData = d.data();
+      return { 
+        id: d.id, 
+        ...postData, 
+        isLiked: postData.likedBy?.includes(currentUser?.uid) || false, // Cek ke database
+        isSaved: false 
+      };
+    });
 
       // Fallback jika query utama kosong
       if (!data || data.length === 0) {
@@ -222,10 +231,12 @@ export default function VideoFeedScreen({ navigation }: any) {
               return typeof url === 'string' && (url.endsWith('.mp4') || url.includes('video'));
             })
             .map((d: any) => ({ ...d, isLiked: false, isSaved: false }));
-        } catch (e2) {
-          console.log('Fallback fetch failed', e2);
-        }
-      }
+        } catch (e) {
+    console.log('Primary video fetch failed', e);
+  } finally {
+    setLoading(false);
+  }
+};
 
       setVideos(data);
     } catch (e) {
@@ -238,12 +249,17 @@ export default function VideoFeedScreen({ navigation }: any) {
   const handleLike = async (postId: string, isLiked: boolean) => {
     try {
       await updateDoc(doc(db, 'posts', postId), {
-        likesCount: increment(isLiked ? -1 : 1)
+      likesCount: increment(isLiked ? -1 : 1),
+      likedBy: isLiked ? arrayRemove(currentUser?.uid) : arrayUnion(currentUser?.uid)
       });
       setVideos(prev => prev.map(v =>
-        v.id === postId
-          ? { ...v, isLiked: !isLiked, likesCount: (v.likesCount || 0) + (isLiked ? -1 : 1) }
-          : v
+      v.id === postId
+        ? { 
+            ...v, 
+            isLiked: !isLiked, 
+            likesCount: (v.likesCount || 0) + (isLiked ? -1 : 1) 
+          }
+        : v
       ));
       if (!isLiked) {
         try {

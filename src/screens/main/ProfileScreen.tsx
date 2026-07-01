@@ -11,6 +11,16 @@ import { Ionicons } from '@expo/vector-icons';
 import { auth, db } from '../../utils/firebase';
 import { useStore } from '../../store/useStore';
 
+// This screen shows either:
+//  - the logged-in user's own account + settings/logout (no `userId` param, or
+//    `userId` === currentUser.uid), OR
+//  - another user's profile + Follow/Unfollow button (when a different
+//    `userId` param is passed in, e.g. from Search, Notifications, or Comments).
+//
+// IMPORTANT: Home (FeedScreen) never navigates here with another user's
+// `userId` — avatar/username taps on Home are intentionally inert. This
+// screen only ever opens another account when reached from Search,
+// Notifications, or Comments.
 export default function ProfileScreen({ route }: any) {
   const { currentUser, isDarkMode, toggleDarkMode } = useStore();
   const [loading, setLoading] = useState(false);
@@ -23,7 +33,7 @@ export default function ProfileScreen({ route }: any) {
 
   useEffect(() => {
     fetchProfile();
-  }, [targetUserId]);
+  }, [targetUserId, currentUser?.uid]);
 
   const fetchProfile = async () => {
     if (!targetUserId) return;
@@ -44,7 +54,7 @@ export default function ProfileScreen({ route }: any) {
   };
 
   const handleFollow = async () => {
-    // Item 1: follow only works between two different, logged-in users.
+    // Follow only works between two different, logged-in users.
     if (!currentUser?.uid || !targetUserId || currentUser.uid === targetUserId) return;
     setLoading(true);
     try {
@@ -85,7 +95,7 @@ export default function ProfileScreen({ route }: any) {
       setLoading(false);
     }
   };
-
+  
   const handleLogout = async () => {
     Alert.alert('Logout', 'Yakin mau logout?', [
       { text: 'Batal', style: 'cancel' },

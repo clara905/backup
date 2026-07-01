@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, TextInput, StyleSheet,
-  FlatList, TouchableOpacity, ActivityIndicator
+  FlatList, TouchableOpacity, ActivityIndicator, Image
 } from 'react-native';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useNavigation } from '@react-navigation/native';
 import { db } from '../../utils/firebase';
+
 
 export default function SearchScreen() {
   const [searchText, setSearchText] = useState('');
@@ -54,16 +55,27 @@ export default function SearchScreen() {
           // Item 1: tapping a search result opens that user's profile
           <TouchableOpacity
             style={styles.userItem}
-            onPress={() => navigation.navigate('Profile', { userId: item.id })}
+            onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
           >
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {item.displayName?.charAt(0).toUpperCase()}
-              </Text>
+              {item.photoURL ? (
+                <Image source={{ uri: item.photoURL }} style={styles.avatarImg} />
+              ) : (
+                <Text style={styles.avatarText}>
+                  {(item.displayName || item.username)?.charAt(0).toUpperCase()}
+                </Text>
+              )}
             </View>
             <View>
-              <Text style={styles.displayName}>{item.displayName}</Text>
-              <Text style={styles.email}>{item.email}</Text>
+              {/* Privasi: email TIDAK ditampilkan di sini. Email cuma untuk
+                  autentikasi / halaman akun pribadi (ProfileScreen milik sendiri),
+                  bukan untuk ditampilkan ke user lain. */}
+              <Text style={styles.displayName}>
+                {item.displayName || item.username || 'User'}
+              </Text>
+              {item.username ? (
+                <Text style={styles.username}>@{item.username}</Text>
+              ) : null}
             </View>
           </TouchableOpacity>
         )}
@@ -92,9 +104,10 @@ const styles = StyleSheet.create({
     borderColor: '#333',
   },
   userItem: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12, borderBottomWidth: 1, borderBottomColor: '#222' },
-  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E91E63', justifyContent: 'center', alignItems: 'center' },
+  avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: '#E91E63', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' },
+  avatarImg: { width: '100%', height: '100%' },
   avatarText: { color: '#fff', fontWeight: 'bold', fontSize: 18 },
   displayName: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
-  email: { color: '#888', fontSize: 13 },
+  username: { color: '#888', fontSize: 13 },
   emptyText: { color: '#888', textAlign: 'center', marginTop: 40 },
 });

@@ -8,7 +8,8 @@ import { VideoView, useVideoPlayer } from 'expo-video';
 import { useIsFocused, useNavigation } from '@react-navigation/native';
 import {
   collection, query, orderBy, limit, getDocs, where,
-  doc, updateDoc, increment, addDoc, serverTimestamp, getDoc
+  doc, updateDoc, increment, addDoc, serverTimestamp, onSnapshot,
+   arrayUnion, arrayRemove 
 } from 'firebase/firestore';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../utils/firebase';
@@ -97,40 +98,65 @@ export default function FeedScreen() {
 
   // Item 7: Following vs For You tabs
   const [feedTab, setFeedTab] = useState<'following' | 'forYou'>('forYou');
-  const [followingIds, setFollowingIds] = useState<string[] | null>(null);
+
+  // Live-synced list of who the current user follows. Fed by a Firestore
+  // onSnapshot listener below — NOT a one-time fetch — so the Mengikuti tab
+  // reacts immediately to a follow/unfollow that happens anywhere else in
+  // the app (Search, Notifications, Comments -> Profile), regardless of
+  // navigation focus timing.
+  const [followingIds, setFollowingIds] = useState<string[]>([]);
 
   const [visibleVideoId, setVisibleVideoId] = useState<string | null>(null);
+
+  // Subscribe to the current user's own doc in real time.
+  useEffect(() => {
+    if (!currentUser?.uid) {
+      setFollowingIds([]);
+      return;
+    }
+    const unsub = onSnapshot(
+      doc(db, 'users', currentUser.uid),
+      (snap) => {
+        const ids: string[] = snap.exists() ? (snap.data().following || []) : [];
+        setFollowingIds(ids);
+      },
+      (err) => console.log('following snapshot error', err)
+    );
+    return () => unsub();
+  }, [currentUser?.uid]);
 
   const fetchForYouPosts = async () => {
     const q = query(collection(db, 'posts'), orderBy('createdAt', 'desc'), limit(20));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data(), isLiked: false })) as any[];
+    return snapshot.docs.map(d => {
+      const data = d.data();
+      return { 
+        id: d.id, 
+        ...data, 
+        isLiked: data.likedBy?.includes(currentUser?.uid) || false 
+      };
+    }) as any[];
   };
 
-  const fetchFollowingPosts = async () => {
-    if (!currentUser?.uid) return [];
-    let ids = followingIds;
-    if (ids === null) {
-      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
-      ids = userSnap.exists() ? (userSnap.data().following || []) : [];
-      setFollowingIds(ids);
-    }
+  const fetchFollowingPosts = async (ids: string[]) => {
     if (!ids || ids.length === 0) return [];
-    // Firestore 'in' supports up to 30 values; keep it simple and cap at 10.
-    const q = query(
-      collection(db, 'posts'),
-      where('userId', 'in', ids.slice(0, 10)),
-      orderBy('createdAt', 'desc'),
-      limit(20)
-    );
+
+    const q = query(collection(db, 'posts'), where('userId', 'in', ids.slice(0, 10)), orderBy('createdAt', 'desc'), limit(20));
     const snapshot = await getDocs(q);
-    return snapshot.docs.map(d => ({ id: d.id, ...d.data(), isLiked: false })) as any[];
+    return snapshot.docs.map(d => {
+      const data = d.data();
+      return { 
+        id: d.id, 
+        ...data, 
+        isLiked: data.likedBy?.includes(currentUser?.uid) || false 
+      };
+    }) as any[];
   };
 
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const fetched = feedTab === 'forYou' ? await fetchForYouPosts() : await fetchFollowingPosts();
+      const fetched = feedTab === 'forYou' ? await fetchForYouPosts() : await fetchFollowingPosts(followingIds);
       setPosts(fetched);
     } catch (error) {
       console.log(error);
@@ -142,8 +168,12 @@ export default function FeedScreen() {
   const handleLike = useCallback(async (postId: string, isLiked: boolean) => {
     try {
       await updateDoc(doc(db, 'posts', postId), {
-        likesCount: increment(isLiked ? -1 : 1)
+        likesCount: increment(isLiked ? -1 : 1),
+        // Simpan atau hapus UID user dari array likedBy di Firestore
+        likedBy: isLiked ? arrayRemove(currentUser?.uid) : arrayUnion(currentUser?.uid)
       });
+      
+      // Update state lokal (Zustand)
       useStore.getState().updatePost(postId, {
         isLiked: !isLiked,
         likesCount: (posts.find(p => p.id === postId)?.likesCount || 0) + (isLiked ? -1 : 1)
@@ -184,11 +214,11 @@ export default function FeedScreen() {
     } catch (e) { console.log(e); }
   }, []);
 
-  // Item 1: tap avatar/username anywhere in the feed to open that user's profile
-  const openProfile = useCallback((userId: string) => {
-    if (!userId) return;
-    navigation.navigate('Profile', { userId });
-  }, [navigation]);
+  // NOTE: avatar/username taps on Home are intentionally NOT navigable.
+  // Home must never open another user's Profile — the Profile screen only
+  // opens another account when reached from Search, Notifications, or
+  // Comments. See postHeader, videoIdentityBar, and the comment modal's
+  // renderItem below: they use plain <View>s, not TouchableOpacity.
 
   const handleComment = async () => {
     if (!commentText.trim()) return;
@@ -220,7 +250,33 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
-  useEffect(() => { fetchPosts(); }, [feedTab]);
+  // Refetch whenever the active tab changes OR the auth session resolves/changes.
+  //
+  // FIX: this effect used to depend only on [feedTab]. On cold start, Firebase
+  // Auth resolves the current session asynchronously — this screen can mount
+  // and call fetchPosts() BEFORE currentUser.uid is available. Since isLiked
+  // is computed at fetch time from `data.likedBy?.includes(currentUser?.uid)`,
+  // that first fetch would compute isLiked: false for every post (even ones
+  // the user had already liked in a previous session), and because the effect
+  // never re-ran after currentUser showed up, that wrong isLiked state stuck
+  // around for the whole session — looking exactly like "like status reset
+  // after logout/login". Adding currentUser?.uid here forces a refetch once
+  // the real uid is known, so isLiked is computed correctly.
+  useEffect(() => {
+    fetchPosts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [feedTab, currentUser?.uid]);
+
+  // Refetch Mengikuti the instant the live following list changes — this is
+  // what actually fixes "unfollowed account still stuck in Mengikuti":
+  // it no longer depends on navigating back to Home, it reacts to the
+  // Firestore write itself, live, from any screen.
+  useEffect(() => {
+    if (feedTab === 'following') {
+      fetchPosts();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [followingIds]);
 
   const viewabilityConfig = useRef({ itemVisiblePercentThreshold: 60 }).current;
   const keyExtractor = useCallback((item: any) => item.id, []);
@@ -240,9 +296,10 @@ export default function FeedScreen() {
 
     return (
       <View style={styles.postCard}>
-        {/* For photo/audio posts identity sits in a normal header above the media. */}
+        {/* For photo/audio posts identity sits in a normal header above the media.
+            Not tappable — Home never navigates to another user's Profile. */}
         {item.mediaType !== 'video' && (
-          <TouchableOpacity style={styles.postHeader} onPress={() => openProfile(item.userId)}>
+          <View style={styles.postHeader}>
             <View style={styles.avatar}>
               {item.userPhotoURL ? (
                 <Image source={{ uri: item.userPhotoURL }} style={styles.avatarImg} />
@@ -251,7 +308,7 @@ export default function FeedScreen() {
               )}
             </View>
             <Text style={[styles.username, { color: '#fff' }]}>{item.userDisplayName}</Text>
-          </TouchableOpacity>
+          </View>
         )}
 
         <View style={{ width: mediaSize.width, height: mediaSize.height, alignSelf: 'center' }}>
@@ -277,9 +334,9 @@ export default function FeedScreen() {
           )}
 
           {/* Item 7: for video posts, identity is overlaid at the bottom, Reels-style,
-              so it stays legible against any background. */}
+              so it stays legible against any background. Not tappable — see note above. */}
           {item.mediaType === 'video' && (
-            <TouchableOpacity style={styles.videoIdentityBar} onPress={() => openProfile(item.userId)}>
+            <View style={styles.videoIdentityBar}>
               <View style={styles.avatarSmall}>
                 {item.userPhotoURL ? (
                   <Image source={{ uri: item.userPhotoURL }} style={styles.avatarImg} />
@@ -288,7 +345,7 @@ export default function FeedScreen() {
                 )}
               </View>
               <Text style={styles.videoUsername} numberOfLines={1}>{item.userDisplayName}</Text>
-            </TouchableOpacity>
+            </View>
           )}
         </View>
 
@@ -316,12 +373,17 @@ export default function FeedScreen() {
         ) : null}
       </View>
     );
-  }, [visibleVideoId, isScreenFocused, handleLike, openComments, openProfile]);
+  }, [visibleVideoId, isScreenFocused, handleLike, openComments]);
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>🎬 MediaNova</Text>
+        
+        {/* Tambahkan tombol notifikasi di sini bang */}
+        <TouchableOpacity onPress={() => navigation.navigate('Notifications')}>
+          <Ionicons name="notifications-outline" size={26} color="#fff" />
+        </TouchableOpacity>
       </View>
 
       {/* Item 7: Following / For You tabs */}
@@ -399,7 +461,9 @@ export default function FeedScreen() {
               keyExtractor={(item) => item.id}
               style={styles.commentList}
               renderItem={({ item }) => (
-                <TouchableOpacity style={styles.commentItem} onPress={() => openProfile(item.userId)}>
+                // Not tappable — Home (including this modal) never navigates
+                // to another user's Profile.
+                <View style={styles.commentItem}>
                   <View style={styles.commentAvatar}>
                     <Text style={styles.commentAvatarText}>
                       {item.userDisplayName?.charAt(0).toUpperCase()}
@@ -409,7 +473,7 @@ export default function FeedScreen() {
                     <Text style={styles.commentName}>{item.userDisplayName}</Text>
                     <Text style={styles.commentText}>{item.text}</Text>
                   </View>
-                </TouchableOpacity>
+                </View>
               )}
               ListEmptyComponent={<Text style={styles.noComments}>Belum ada komentar</Text>}
             />
@@ -438,7 +502,15 @@ export default function FeedScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
-  header: { padding: 16, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#222' },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 16, 
+    paddingBottom: 8, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#222' 
+  },
   headerTitle: { color: '#fff', fontSize: 20, fontWeight: 'bold' },
   tabRow: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#222' },
   tabBtn: { flex: 1, alignItems: 'center', paddingVertical: 12 },
